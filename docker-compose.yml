@@ -1,0 +1,52 @@
+
+services:
+  # --- CORE DATA ENGINE ---
+  database-core:
+    image: mongo:latest
+    container_name: sd_mongo_engine
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: db_admin_user
+      MONGO_INITDB_ROOT_PASSWORD: SecureVaultPassword2026!
+    volumes:
+      - database_storage:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - sd_secure_network
+
+  # --- BACKEND ARCHITECTURE CORE ---
+  backend-api:
+    image: python:3.11-slim
+    container_name: sd_fastapi_core
+    restart: always
+    volumes:
+      - ./apps:/app
+      - ./logs:/var/log/app
+    working_dir: /app
+    command: sh -c "pip install fastapi uvicorn pymongo motor && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - database-core
+    networks:
+      - sd_secure_network
+
+  # --- OFFENSIVE/DEFENSIVE SECURITY LAB ---
+  kali-sandbox:
+    image: kalilinux/kali-rolling:latest
+    container_name: sd_kali_sandbox
+    restart: always
+    tty: true
+    stdin_open: true
+    network_mode: "host"
+    volumes:
+      - ./security:/workspace
+      - ./logs:/target_logs
+
+volumes:
+  database_storage:
+
+networks:
+  sd_secure_network:
+    driver: bridge
