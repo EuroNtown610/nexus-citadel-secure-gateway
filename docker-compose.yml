@@ -1,8 +1,7 @@
-
 services:
   # --- CORE DATA ENGINE ---
   database-core:
-    image: mongo:latest
+    image: mongo:4.4
     container_name: sd_mongo_engine
     restart: always
     environment:
@@ -32,14 +31,16 @@ services:
     networks:
       - sd_secure_network
 
-  # --- OFFENSIVE/DEFENSIVE SECURITY LAB ---
+    # --- OFFENSIVE/DEFENSIVE SECURITY LAB ---
   kali-sandbox:
     image: kalilinux/kali-rolling:latest
     container_name: sd_kali_sandbox
     restart: always
     tty: true
     stdin_open: true
-    network_mode: "host"
+    # Connects the sandbox directly to the secure network bridge
+    networks:
+      - sd_secure_network
     volumes:
       - ./security:/workspace
       - ./logs:/target_logs
