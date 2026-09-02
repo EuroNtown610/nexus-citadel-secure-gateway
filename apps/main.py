@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends, Request
+from fastapi import FastAPI, Depends, Request, Form, HTTPException
+from fastapi.responses import JSONResponse
 from database import db_engine
 
 app = FastAPI(title="Nexxus Citadel Backend Engine")
@@ -8,7 +9,6 @@ app = FastAPI(title="Nexxus Citadel Backend Engine")
 async def inject_hardened_security_headers(request: Request, call_next):
     response = await call_next(request)
     
-    # Python formatting requires exactly 4 spaces of indentation inside functions
     response.headers["Content-Security-Policy"] = "default-src 'self'; object-src 'none';"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
@@ -38,22 +38,14 @@ async def check_system_health(db = Depends(get_db)):
         
     return {"backend_server": "ONLINE", "database_connection": status}
 
-from fastapi import Form
-from fastapi.responses import JSONResponse
-
-# Append this block directly to your existing main.py structure
+# --- ACTIVE WEB FORM INTAKE ROUTE ---
 @app.post("/api/v1/optimize")
 async def execute_client_optimization_sprint(
     endpoint: str = Form(...), 
     image_assets: int = Form(...)
 ):
-    """
-    Receives incoming form parameters from intake.html, executes security
-    validation logic, and routes metrics to our backend automation pools.
-    """
     print(f"[+] Form Payload Intercepted! Target: {endpoint} // Assets: {image_assets}")
     
-    # Input Validation Layer: Flag dangerously heavy systems early
     if image_assets > 500:
         performance_status = "CRITICAL LIMIT EXCEEDED // HIGH SPEED DRAG"
         remediation_action = "Deploy multi-threaded WebP compression engine instantly."
@@ -70,4 +62,15 @@ async def execute_client_optimization_sprint(
             "performance_profile": performance_status,
             "remediation_protocol": remediation_action
         }
+    )
+
+# --- OFFENSIVE INTRUSION DECEPTIVE TRAP ROUTE ---
+@app.get("/api/v1/admin/ledger")
+async def secure_admin_ledger_trap(request: Request):
+    client_ip = request.client.host
+    print(f"[🚨 INTRUSION ALERT] Unauthorized administrative path probe intercepted from IP: {client_ip}!")
+    
+    raise HTTPException(
+        status_code=403, 
+        detail="ACCESS DENIED // SECURITY PROTOCOL INITIATED // IP INCIDENT RECORDED"
     )
