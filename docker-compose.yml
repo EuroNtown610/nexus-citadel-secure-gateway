@@ -1,5 +1,16 @@
+networks:
+  sd_secure_network:
+    driver: bridge
+
+volumes:
+  mongo_data:
+  postgres_data:
+  mysql_data:
+
 services:
-  # --- 1. CORE BACKEND APPLICATION ENGINE ---
+  # ==========================================
+  # ZONE 1: THE CORE APP STACK
+  # ==========================================
   backend-api:
     image: python:3.11-slim
     container_name: sd_fastapi_core
@@ -11,11 +22,8 @@ services:
     working_dir: /app
     networks:
       - sd_secure_network
-    depends_on:
-      - database-engine
     command: sh -c "pip install --no-cache-dir fastapi uvicorn[standard] python-multipart motor && uvicorn apps.main:app --host 0.0.0.0 --port 8000 --reload"
 
-  # --- 2. ASYNCHRONOUS NO-SQL DATA PLATFORM ---
   database-engine:
     image: mongo:4.4
     container_name: sd_mongo_engine
@@ -27,7 +35,6 @@ services:
     networks:
       - sd_secure_network
 
-  # --- 3. OWASP JUICE SHOP TARGET MACHINE ---
   vulnerable-target:
     image: bkimminich/juice-shop:latest
     container_name: sd_target_juiceshop
@@ -37,7 +44,6 @@ services:
     networks:
       - sd_secure_network
 
-  # --- 4. 🔥 NEW TARGET: DAMNED VULNERABLE WEB APPLICATION (DVWA) ---
   dvwa-target:
     image: vulnerables/web-dvwa:latest
     container_name: sd_target_dvwa
@@ -47,7 +53,6 @@ services:
     networks:
       - sd_secure_network
 
-  # --- 5. 🔥 NEW TARGET: NGINX ROGUE WEB CONSOLE ---
   rogue-console:
     image: nginx:alpine
     container_name: sd_target_rogue_nginx
@@ -57,7 +62,6 @@ services:
     networks:
       - sd_secure_network
 
-  # --- 6. WEAPONIZED KALI SANBOX TERMINAL NODE ---
   kali-sandbox:
     image: kalilinux/kali-rolling:latest
     container_name: sd_kali_sandbox
@@ -69,11 +73,73 @@ services:
     volumes:
       - .:/workspace
       - ./logs:/target_logs
-    command: sh -c "apt-get update && apt-get install -y curl nmap nikto dirb hydra ncrack && tail -f /dev/null"
+    command: sh -c "apt-get update && apt-get install -y curl nmap nikto dirb hydra ncrack & tail -f /dev/null"
 
-networks:
-  sd_secure_network:
-    driver: bridge
+  # ==========================================
+  # ZONE 2: ENTERPRISE DEPLOYMENT ADDITIONS
+  # ==========================================
+  redis-cache:
+    image: redis:alpine
+    container_name: sd_infra_redis
+    networks:
+      - sd_secure_network
 
-volumes:
-  mongo_data:
+  postgres-db:
+    image: postgres:alpine
+    container_name: sd_infra_postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: Password123!
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - sd_secure_network
+
+  mysql-db:
+    image: mysql:8.0
+    container_name: sd_infra_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: RootPassword123!
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - sd_secure_network
+
+  memcached-node:
+    image: memcached:alpine
+    container_name: sd_infra_memcached
+    networks:
+      - sd_secure_network
+
+  grafana-dashboard:
+    image: grafana/grafana:latest
+    container_name: sd_sys_grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - sd_secure_network
+
+  prometheus-monitor:
+    image: prom/prometheus:latest
+    container_name: sd_sys_prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - sd_secure_network
+
+  vulnerable-ssh:
+    image: lscr.io/linuxserver/openssh-server:latest
+    container_name: sd_target_ssh
+    environment:
+      - PASSWORD_ACCESS=true
+      - USER_PASSWORD=Password123!
+    networks:
+      - sd_secure_network
+
+  vulnerable-wordpress:
+    image: wordpress:latest
+    container_name: sd_target_wordpress
+    ports:
+      - "8085:80"
+    networks:
+      - sd_secure_network
