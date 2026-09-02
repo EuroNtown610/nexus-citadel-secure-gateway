@@ -13,7 +13,9 @@ def extract_high_severity_liabilities():
     findings = []
     with open(LOG_PATH, "r") as f:
         for line in f:
-            if "missing:" in line.lower() or ".json" in line.lower() or "history" in line.lower():
+            # Force the current line string to lowercase before checking keywords
+            clean_line = line.lower()
+            if "missing:" in clean_line or ".json" in clean_line or "history" in clean_line or "interesting" in clean_line:
                 findings.append(line.strip())
 
     print(f"[+] Isolated {len(findings)} critical points. Building GitHub Summary markdown...")
