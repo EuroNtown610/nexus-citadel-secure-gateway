@@ -1,0 +1,60 @@
+<head>
+    <meta charset="UTF-8" />
+    <!-- THE CRITICAL RESPONSIVE VIEWPORT TAG -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Secure Data Defense Systems // Intake Core</title>
+</head>
+
+
+<body>
+
+    <!-- SEMANTIC CONTAINER 1: THE PORTAL HEADER -->
+    <header>
+        <h1>Secure Data Defense Systems</h1>
+        <nav>
+            <ul>
+                <li><a href="#audit-panel">Remediation Engine</a></li>
+                <li><a href="#logs">System Status</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- SEMANTIC CONTAINER 2: THE MAIN EXECUTION HUB -->
+    <main>
+        <section id="audit-panel">
+            <header>
+                <h2>Client Infrastructure Optimization Intake</h2>
+                <p>Submit your server telemetry bounds to verify compliance parameters.</p>
+            </header>
+
+            <!-- DATA ENTRY COMPLIANCE FORM -->
+            <form action="http://localhost:8000/api/v1/optimize" method="POST">
+                <fieldset>
+                    <legend>Network & Asset Parameters</legend>
+
+                    <div>
+                        <label for="client-url">Target Endpoint URL:</label>
+                        <input type="url" id="client-url" name="endpoint" required
+                            placeholder="https://client-site.com">
+                    </div>
+
+                    <div>
+                        <label for="img-count">Unoptimized Media Count:</label>
+                        <input type="number" id="img-count" name="image_assets" min="1" max="10000" required
+                            placeholder="150">
+                    </div>
+                </fieldset>
+
+                <button type="submit">Execute Batch Compression Sprint</button>
+            </form>
+        </section>
+    </main>
+
+    <!-- SEMANTIC CONTAINER 3: THE COMPLIANCE FOOTER -->
+    <footer>
+        <p>&copy; 2026 Secure Data Defense Systems, LLC. All Rights Reserved. Norristown Regional Unit.</p>
+    </footer>
+
+</body>
+
+</html>

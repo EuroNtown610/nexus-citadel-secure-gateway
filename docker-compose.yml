@@ -31,19 +31,20 @@ services:
     networks:
       - sd_secure_network
 
-    # --- OFFENSIVE/DEFENSIVE SECURITY LAB ---
+      # --- OFFENSIVE/DEFENSIVE SECURITY LAB ---
   kali-sandbox:
     image: kalilinux/kali-rolling:latest
     container_name: sd_kali_sandbox
     restart: always
     tty: true
     stdin_open: true
-    # Connects the sandbox directly to the secure network bridge
     networks:
       - sd_secure_network
     volumes:
       - ./security:/workspace
       - ./logs:/target_logs
+    # This automatically boots the container, installs your utility tool suite, and holds the shell wide open
+    command: sh -c "apt-get update && apt-get install -y curl nikto dirb && tail -f /dev/null"
 
 volumes:
   database_storage:
