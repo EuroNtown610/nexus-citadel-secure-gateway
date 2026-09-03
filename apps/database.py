@@ -3,8 +3,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 # --- DATABASE ENGINE CONFIGURATION ---
 MONGO_USER = "db_admin_user"
-MONGO_PASS = "SecureVaultPassword2026!"
-MONGO_HOST = "database-core"
+MONGO_PASS = os.getenv("MONGO_PASS")
+MONGO_HOST = os.getenv("MONGO_HOST", "database-core")
 MONGO_PORT = "27017"
 
 MONGO_URI = f"mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/?authSource=admin"
