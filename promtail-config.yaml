@@ -1,0 +1,30 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki-logging:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: windows-docker-containers
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker-logs
+          # Force the scanning system to hunt inside the internal virtual path root
+          __path__: /var/lib/docker/containers/*/*.log
+
+    # Advanced data filters to automatically strip out system noise and clean up container tags
+    pipeline_stages:
+      - json:
+          expressions:
+            log: log
+            stream: stream
+            time: time
+      - timestamp:
+          source: time
+          format: RFC3339

@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 5s # Captures metrics every 5 seconds to generate fluid charts
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: "prometheus-internal"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "fastapi-core-app"
+    static_configs:
+      - targets: ["sd_fastapi_core:8000"]
+
+  - job_name: "postgres-database"
+    static_configs:
+      - targets: ["sd_infra_postgres:5432"]
+
