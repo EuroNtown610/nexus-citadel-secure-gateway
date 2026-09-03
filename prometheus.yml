@@ -1,5 +1,5 @@
 global:
-  scrape_interval: 5s # Captures metrics every 5 seconds to generate fluid charts
+  scrape_interval: 5s # Scrapes data every 5 seconds to generate fluid charts
   evaluation_interval: 5s
 
 scrape_configs:
@@ -7,11 +7,7 @@ scrape_configs:
     static_configs:
       - targets: ["localhost:9090"]
 
-  - job_name: "fastapi-core-app"
+  - job_name: "docker-container-metrics"
     static_configs:
-      - targets: ["sd_fastapi_core:8000"]
-
-  - job_name: "postgres-database"
-    static_configs:
-      - targets: ["sd_infra_postgres:5432"]
-
+      # CRITICAL FIX: Points Prometheus directly to the active cAdvisor system metrics collector
+      - targets: ["sd_sys_promtail:9080"]
