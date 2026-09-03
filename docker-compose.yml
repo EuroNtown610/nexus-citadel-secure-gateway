@@ -6,7 +6,6 @@ volumes:
   mongo_data:
   postgres_data:
   mysql_data:
-  loki_data:
 
 services:
   # ==========================================
@@ -15,10 +14,32 @@ services:
   backend-api:
     image: python:3.11-slim
     container_name: sd_fastapi_core
-    environment:
-      - MONGO_USER=db_admin_user
-      - MONGO_PASS=SecureVaultPassword2026!
-      - MONGO_HOST=database-core
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    working_dir: /app
+    networks:
+      - sd_secure_network
+    command: sh -c "pip install --no-cache-dir fastapi uvicorn[standard] python-multipart motor && uvicorn apps.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  # --- 🤖 NEW SERVICE ADDITION: SECURE MULTI-TENANT SAAS GATEWAY ---
+  saas-api-gateway:
+    image: python:3.11-slim
+    container_name: sd_saas_gateway
+    restart: always
+    ports:
+      - "8001:8001"
+    volumes:
+      - .:/app
+    working_dir: /app
+    networks:
+      - sd_secure_network
+    depends_on:
+      - database-engine
+    # Installs requirements in container memory and binds the SaaS listener loop to port 8001
+    command: sh -c "pip install --no-cache-dir fastapi uvicorn[standard] motor && uvicorn apps.saas_gateway:app --host 0.0.0.0 --port 8001 --reload"
 
   database-engine:
     image: mongo:4.4
@@ -108,30 +129,9 @@ services:
     networks:
       - sd_secure_network
 
-  vulnerable-ssh:
-    image: lscr.io/linuxserver/openssh-server:latest
-    container_name: sd_target_ssh
-    environment:
-      - PASSWORD_ACCESS=true
-      - USER_PASSWORD=Password123!
-    networks:
-      - sd_secure_network
-
-  vulnerable-wordpress:
-    image: wordpress:latest
-    container_name: sd_target_wordpress
-    ports:
-      - "8085:80"
-    networks:
-      - sd_secure_network
-
-  # ==========================================
-  # ZONE 3: SIEM MONITORING, METRICS & LOKI LOGGING
-  # ==========================================
   grafana-dashboard:
     image: grafana/grafana:latest
     container_name: sd_sys_grafana
-    user: "root"
     ports:
       - "3001:3000"
     networks:
@@ -147,25 +147,19 @@ services:
     networks:
       - sd_secure_network
 
-  loki-logging:
-    image: grafana/loki:2.9.0
-    container_name: sd_sys_loki
-    ports:
-      - "3100:3100"
-    volumes:
-      - loki_data:/loki
-    command: -config.file=/etc/loki/local-config.yaml
+  vulnerable-ssh:
+    image: lscr.io/linuxserver/openssh-server:latest
+    container_name: sd_target_ssh
+    environment:
+      - PASSWORD_ACCESS=true
+      - USER_PASSWORD=Password123!
     networks:
       - sd_secure_network
 
-    # Locate your promtail-shipper block and update the volumes path exactly like this:
-  promtail-shipper:
-    image: grafana/promtail:2.9.0
-    container_name: sd_sys_promtail
-    volumes:
-      - ./promtail-config.yaml:/etc/promtail/config.yml
-      # NEW WINDOWS ENGINE STORAGE PATH LINK:
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-    command: -config.file=/etc/promtail/config.yml
+  vulnerable-wordpress:
+    image: wordpress:latest
+    container_name: sd_target_wordpress
+    ports:
+      - "8085:80"
     networks:
       - sd_secure_network
