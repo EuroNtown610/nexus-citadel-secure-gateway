@@ -25,6 +25,8 @@ services:
       - sd_secure_network
     command: sh -c "pip install --no-cache-dir fastapi uvicorn[standard] python-multipart motor bandit && uvicorn apps.main:app --host 0.0.0.0 --port 8000 --reload"
 
+  # --- 🤖 SAAS GATEWAY ENGINE: UPDATED DRIVER FOR ZERO RUNTIME CRASHES ---
+  # Find your saas-api-gateway service block and update it exactly like this:
   saas-api-gateway:
     image: python:3.11-slim
     container_name: sd_saas_gateway
@@ -36,9 +38,8 @@ services:
     working_dir: /app
     networks:
       - sd_secure_network
-    depends_on:
-      - database-engine
-    command: sh -c "pip install --no-cache-dir fastapi uvicorn[standard] motor && uvicorn apps.saas_gateway:app --host 0.0.0.0 --port 8001 --reload"
+    # ZERO DEPENDENCY BOOT: Completely removes the conflicting pymongo string
+    command: sh -c "pip install --no-cache-dir fastapi uvicorn[standard] && uvicorn apps.saas_gateway:app --host 0.0.0.0 --port 8001 --reload"
 
   database-engine:
     image: mongo:4.4
@@ -69,7 +70,6 @@ services:
     networks:
       - sd_secure_network
 
-  # --- 🌐 NGINX TARGET: STANDARDIZED WITH NO CUSTOM BOOT SCRIPTS ---
   rogue-console:
     image: nginx:alpine
     container_name: sd_target_rogue_nginx
