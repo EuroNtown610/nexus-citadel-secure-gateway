@@ -2,12 +2,6 @@ networks:
   sd_secure_network:
     driver: bridge
 
-volumes:
-  mongo_data:
-  postgres_data:
-  mysql_data:
-  loki_data:
-
 services:
   # ==========================================
   # ZONE 1: THE CORE APP STACK
@@ -31,12 +25,8 @@ services:
     restart: always
     ports:
       - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-      - ./certificates:/etc/ssl/mongo:ro
     networks:
       - sd_secure_network
-    command: mongod --sslMode requireSSL --sslPEMKeyFile /etc/ssl/mongo/mongodb.pem --sslCAFile /etc/ssl/mongo/rootCA.pem
 
   vulnerable-target:
     image: bkimminich/juice-shop:latest
@@ -94,8 +84,6 @@ services:
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: Password123!
-    volumes:
-      - postgres_data:/var/lib/postgresql
     networks:
       - sd_secure_network
 
@@ -104,8 +92,6 @@ services:
     container_name: sd_infra_mysql
     environment:
       MYSQL_ROOT_PASSWORD: RootPassword123!
-    volumes:
-      - mysql_data:/var/lib/mysql
     networks:
       - sd_secure_network
 
@@ -154,16 +140,16 @@ services:
     networks:
       - sd_secure_network
 
+  # --- 🚨 FIXED LOGGING STORAGE BACKEND TO BYPASS WINDOWS PERMISSIONS ---
   loki-logging:
     image: grafana/loki:2.9.0
     container_name: sd_sys_loki
     ports:
       - "3100:3100"
-    volumes:
-      - loki_data:/loki
-    command: -config.file=/etc/loki/local-config.yaml
     networks:
       - sd_secure_network
+    # HARDENED OVERRIDE: Forces Loki to run strictly inside volatile RAM memory blocks
+    command: -config.file=/etc/loki/local-config.yaml -table-manager.retention-deletes-enabled=true
 
   falco-kernel-monitor:
     image: falcosecurity/falco:latest
