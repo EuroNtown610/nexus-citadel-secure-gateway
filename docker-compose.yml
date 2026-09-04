@@ -33,8 +33,10 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+      - ./certificates:/etc/ssl/mongo:ro
     networks:
       - sd_secure_network
+    command: mongod --sslMode requireSSL --sslPEMKeyFile /etc/ssl/mongo/mongodb.pem --sslCAFile /etc/ssl/mongo/rootCA.pem
 
   vulnerable-target:
     image: bkimminich/juice-shop:latest
@@ -163,12 +165,17 @@ services:
     networks:
       - sd_secure_network
 
-  promtail-shipper:
-    image: grafana/promtail:2.9.0
-    container_name: sd_sys_promtail
+  falco-kernel-monitor:
+    image: falcosecurity/falco:latest
+    container_name: sd_sys_falco
+    restart: always
+    privileged: true
+    user: root
     volumes:
-      - ./promtail-config.yaml:/etc/promtail/config.yml
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-    command: -config.file=/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /proc:/host/proc:ro
+      - /boot:/host/boot:ro
+      - /lib/modules:/host/lib/modules:ro
+      - /usr:/host/usr:ro
     networks:
       - sd_secure_network
