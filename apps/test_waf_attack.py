@@ -2,10 +2,9 @@ import http.client
 import urllib.parse
 
 def attack_perimeter_waf():
-    # ROUTING FIX: Targets your single most stable container port lane (8000)
+    # Tunneling directly to your stable core app port (8000)
     conn = http.client.HTTPConnection("127.0.0.1", 8000, timeout=5)
     
-    # Safe URL Encoding guarantees the space headers pass the network cards cleanly
     payload = {"id": "1 UNION SELECT password FROM users"}
     encoded_payload = urllib.parse.urlencode(payload)
     malicious_url = f"/api/v1/process/log-parse?{encoded_payload}"

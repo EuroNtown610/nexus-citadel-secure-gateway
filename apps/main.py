@@ -16,10 +16,10 @@ async def commercial_log_parse_endpoint(request: Request):
     client_ip = request.client.host if request.client else "127.0.0.1"
     query_string = request.url.query if request.url.query else ""
     
-    # ─── 🛡️ STEP 1: BULLETPROOF DIRECT STRING INTRUSION SCAN ───
+    # ─── 🛡️ STEP 1: BULLETPROOF DIRECT STRING SCAN ───
     if SQL_INJECTION_PATTERN.search(query_string) or "UNION" in query_string.upper():
-        # Prints directly to stdout logs so Promtail/Loki can capture it safely without crashing threads
-        print(f"\n[🚨 WAF ALARM] PERIMETER BREACH INTERCEPTED FROM IP: {client_ip}! Payload: {query_string}", flush=True)
+        # Prints directly to standard out so Docker can capture it natively without network lags
+        print(f"[🚨 WAF ALARM] PERIMETER BREACH INTERCEPTED FROM IP: {client_ip}! Payload: {query_string}", flush=True)
         
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
