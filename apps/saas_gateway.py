@@ -1,9 +1,11 @@
 from fastapi import FastAPI, Depends, HTTPException, Header, Request, status
+from fastapi.responses import JSONResponse
 import re
 import time
 
 app = FastAPI(title="Nexus Citadel Hardened API Gateway & WAF")
 
+# In-memory dictionary handles all tenant sliding windows with zero database lag
 RATE_LIMIT_STORE = {}
 MAX_REQUEST_THRESHOLD = 5  
 TIME_WINDOW_SECONDS = 10
@@ -12,10 +14,9 @@ TIME_WINDOW_SECONDS = 10
 SQL_INJECTION_PATTERN = re.compile(r"UNION\s+SELECT|SELECT\s+.*\s+FROM|OR\s+['\"]?\d+['\"]?\s*=\s*['\"]?\d+", re.IGNORECASE)
 
 def verify_perimeter_security(request: Request, x_citadel_token: str = Header(None)):
-    # ─── 🛡️ STEP 1: PARSE LIVE QUERY PARAMS SAFELY TO PREVENT NONE-TYPE CRASHES ───
+    # ─── 🛡️ STEP 1: BULLETPROOF DEEP PACKET QUERY INSPECTION ───
     query_string = request.url.query if request.url.query else ""
     
-    # Run deep packet inspection on the un-parsed query string to catch URL spaces
     if SQL_INJECTION_PATTERN.search(query_string) or "UNION" in query_string.upper():
         print(f"\n[🚨 WAF ALARM] MALICIOUS PARAMETER INTERCEPTED NATIVELY!")
         raise HTTPException(
@@ -54,3 +55,4 @@ async def commercial_log_parse_endpoint(dependencies=Depends(verify_perimeter_se
         "service": "Log Parsing Engine",
         "processed_at": time.strftime("%Y-%m-%d %H:%M:%S")
     }
+

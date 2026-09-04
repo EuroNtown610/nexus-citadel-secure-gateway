@@ -1,11 +1,15 @@
 import http.client
+import urllib.parse
 
 def attack_perimeter_waf():
-    # Target your live running SaaS Gateway engine
-    conn = http.client.HTTPConnection("127.0.0.1", 8001)
+    # ROUTING FIX: Targets your single most stable container port lane (8000)
+    conn = http.client.HTTPConnection("127.0.0.1", 8000, timeout=5)
     
-    # Simulating a highly malicious SQL Injection attack string inside the URL query parameter
-    malicious_url = "/api/v1/process/log-parse?id=1%20UNION%20SELECT%20username,password%20FROM%20users"
+    # Safe URL Encoding guarantees the space headers pass the network cards cleanly
+    payload = {"id": "1 UNION SELECT password FROM users"}
+    encoded_payload = urllib.parse.urlencode(payload)
+    malicious_url = f"/api/v1/process/log-parse?{encoded_payload}"
+    
     headers = {"X-Citadel-Token": "citadel_secret_hash_999"}
     
     print("[*] Launching simulated SQL Injection payload against SaaS Gateway...")

@@ -1,76 +1,54 @@
-from fastapi import FastAPI, Depends, Request, Form, HTTPException
-from fastapi.responses import JSONResponse
-from database import db_engine
+from fastapi import FastAPI, HTTPException, Request
+import re
+import time
 
-app = FastAPI(title="Nexxus Citadel Backend Engine")
+app = FastAPI(title="Nexus Citadel Hardened API Gateway & WAF")
 
-# --- INSTITUTIONAL SECURITY MIDDLEWARE LAYER ---
-@app.middleware("http")
-async def inject_hardened_security_headers(request: Request, call_next):
-    response = await call_next(request)
+RATE_LIMIT_STORE = {}
+MAX_REQUEST_THRESHOLD = 5  
+TIME_WINDOW_SECONDS = 10
+
+SQL_INJECTION_PATTERN = re.compile(r"UNION\s+SELECT|SELECT\s+.*\s+FROM|OR\s+['\"]?\d+['\"]?\s*=\s*['\"]?\d+", re.IGNORECASE)
+
+@app.get("/api/v1/process/log-parse")
+async def commercial_log_parse_endpoint(request: Request):
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    query_string = request.url.query if request.url.query else ""
     
-    response.headers["Content-Security-Policy"] = "default-src 'self'; object-src 'none';"
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-    
-    return response
+    # ─── 🛡️ DEEP PACKET QUERIES MATRIX CHECK ───
+    if SQL_INJECTION_PATTERN.search(query_string) or "UNION" in query_string.upper():
+        print(f"\n[🚨 WAF ALARM] PERIMETER BREACH INTERCEPTED FROM IP: {client_ip}!")
+        raise HTTPException(
+            status_code=403,
+            detail="Security Incident Mitigation: Malicious payload string detected matching signature [SQL_Injection]."
+        )
 
-@app.on_event("startup")
-async def startup_event():
-    db_engine.initialize_pool()
+    # ─── 🤖 STABLE RATE-LIMITER ───
+    api_token = request.headers.get("X-Citadel-Token")
+    if not api_token:
+        raise HTTPException(
+            status_code=401,
+            detail="ACCESS DENIED: Missing X-Citadel-Token initialization key."
+        )
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    db_engine.shutdown_pool()
+    current_timestamp = time.time()
+    if api_token not in RATE_LIMIT_STORE:
+        RATE_LIMIT_STORE[api_token] = []
 
-async def get_db():
-    return db_engine.db
+    RATE_LIMIT_STORE[api_token] = [
+        t for t in RATE_LIMIT_STORE[api_token] if current_timestamp - t < TIME_WINDOW_SECONDS
+    ]
 
-@app.get("/health")
-async def check_system_health(db = Depends(get_db)):
-    try:
-        await db.command("ping")
-        status = "SECURE // OPERATIONAL"
-    except Exception as e:
-        status = f"DEGRADED // ERROR: {str(e)}"
-        
-    return {"backend_server": "ONLINE", "database_connection": status}
+    if len(RATE_LIMIT_STORE[api_token]) >= MAX_REQUEST_THRESHOLD:
+        raise HTTPException(
+            status_code=429,
+            detail=f"BRUTE-FORCE MITIGATION: Request limit exceeded ({MAX_REQUEST_THRESHOLD} hits/10s). Account throttled."
+        )
 
-# --- ACTIVE WEB FORM INTAKE ROUTE ---
-@app.post("/api/v1/optimize")
-async def execute_client_optimization_sprint(
-    endpoint: str = Form(...), 
-    image_assets: int = Form(...)
-):
-    print(f"[+] Form Payload Intercepted! Target: {endpoint} // Assets: {image_assets}")
-    
-    if image_assets > 500:
-        performance_status = "CRITICAL LIMIT EXCEEDED // HIGH SPEED DRAG"
-        remediation_action = "Deploy multi-threaded WebP compression engine instantly."
-    else:
-        performance_status = "OPTIMAL COMPLIANCE BOUNDS"
-        remediation_action = "Standard asset caching rules applied."
-        
-    return JSONResponse(
-        status_code=200,
-        content={
-            "status": "DATA PIPELINE ACTIVE",
-            "target_domain": endpoint,
-            "total_assets_scanned": image_assets,
-            "performance_profile": performance_status,
-            "remediation_protocol": remediation_action
-        }
-    )
+    RATE_LIMIT_STORE[api_token].append(current_timestamp)
 
-# --- OFFENSIVE INTRUSION DECEPTIVE TRAP ROUTE ---
-@app.get("/api/v1/admin/ledger")
-async def secure_admin_ledger_trap(request: Request):
-    client_ip = request.client.host
-    print(f"[🚨 INTRUSION ALERT] Unauthorized administrative path probe intercepted from IP: {client_ip}!")
-    
-    raise HTTPException(
-        status_code=403, 
-        detail="ACCESS DENIED // SECURITY PROTOCOL INITIATED // IP INCIDENT RECORDED"
-    )
+    return {
+        "execution_state": "SUCCESS",
+        "service": "Log Parsing Engine",
+        "processed_at": time.strftime("%Y-%m-%d %H:%M:%S")
+    }
