@@ -1,11 +1,14 @@
 import http.client
+import urllib.parse
 
 def attack_perimeter_waf():
     # Route directly to your stable core app port mapping
     conn = http.client.HTTPConnection("127.0.0.1", 8000, timeout=5)
     
-    # Simple, clear URL formatting blocks connection refusal loops
-    malicious_url = "/api/v1/process/log-parse?id=1%20UNION%20SELECT%20password%20FROM%20users"
+    # Safe URL formatting targets the exact endpoint route directly
+    payload = {"id": "1 UNION SELECT password FROM users"}
+    encoded_payload = urllib.parse.urlencode(payload)
+    malicious_url = f"/api/v1/process/log-parse?{encoded_payload}"
     
     print("[*] Launching simulated SQL Injection payload against SaaS Gateway...")
     conn.request("GET", malicious_url)
