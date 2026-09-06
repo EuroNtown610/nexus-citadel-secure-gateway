@@ -1,18 +1,14 @@
 import http.client
-import urllib.parse
 
 def attack_perimeter_waf():
-    # Tunneling directly to your stable core app port (8000)
+    # Route directly to your stable core app port mapping
     conn = http.client.HTTPConnection("127.0.0.1", 8000, timeout=5)
     
-    payload = {"id": "1 UNION SELECT password FROM users"}
-    encoded_payload = urllib.parse.urlencode(payload)
-    malicious_url = f"/api/v1/process/log-parse?{encoded_payload}"
-    
-    headers = {"X-Citadel-Token": "citadel_secret_hash_999"}
+    # Simple, clear URL formatting blocks connection refusal loops
+    malicious_url = "/api/v1/process/log-parse?id=1%20UNION%20SELECT%20password%20FROM%20users"
     
     print("[*] Launching simulated SQL Injection payload against SaaS Gateway...")
-    conn.request("GET", malicious_url, headers=headers)
+    conn.request("GET", malicious_url)
     res = conn.getresponse()
     
     print(f"\n[+] WAF Response Status Code: {res.status}")
@@ -21,3 +17,4 @@ def attack_perimeter_waf():
 
 if __name__ == "__main__":
     attack_perimeter_waf()
+
