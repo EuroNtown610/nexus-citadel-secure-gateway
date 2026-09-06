@@ -163,15 +163,20 @@ services:
     networks:
       - sd_secure_network
 
+  # --- 🚨 PROMTAIL LOG COLLECTOR SERVICE PASSTHROUGH ---
   promtail-shipper:
     image: grafana/promtail:2.9.0
     container_name: sd_sys_promtail
+    user: "root"
     volumes:
-      - ./promtail-config.yaml:/etc/promtail/config.yml
+      - ./promtail-config.yaml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
     command: -config.file=/etc/promtail/config.yml
     networks:
       - sd_secure_network
+    depends_on:
+      - loki-logging
 
   falco-kernel-monitor:
     image: falcosecurity/falco:latest
