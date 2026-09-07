@@ -17,7 +17,7 @@ services:
     container_name: sd_nginx_edge_proxy
     restart: always
     ports:
-      - "8080:80" # Public entry lane mapped safely through port 8080
+      - "8080:80"
     volumes:
       - ./nginx-config:/etc/nginx/conf.d:ro
     networks:
@@ -27,12 +27,14 @@ services:
       - vulnerable-wordpress
 
   # ==========================================
-  # ZONE 1: THE PROTECTED CORE APP STACK
+  # ZONE 1: THE CORE APP STACK
   # ==========================================
   backend-api:
     image: python:3.11-slim
     container_name: sd_fastapi_core
     restart: always
+    ports:
+      - "8000:8000"
     volumes:
       - .:/app
     working_dir: /app
@@ -140,6 +142,9 @@ services:
   vulnerable-wordpress:
     image: wordpress:latest
     container_name: sd_target_wordpress
+    # 🚨 RESTORED: Exposing port 8085 directly back to your Windows environment
+    ports:
+      - "8085:80"
     networks:
       - sd_secure_network
     depends_on:
