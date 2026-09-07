@@ -1,5 +1,7 @@
 networks:
-  sd_secure_network:
+  dmz_public_net:
+    driver: bridge
+  app_isolated_net:
     driver: bridge
 
 volumes:
@@ -10,19 +12,35 @@ volumes:
 
 services:
   # ==========================================
+  # THE EDGE GATEWAY (FACING THE WAN)
+  # ==========================================
+  nginx-edge-proxy:
+    image: nginx:alpine
+    container_name: sd_nginx_edge_proxy
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx-config:/etc/nginx/conf.d:ro
+    networks:
+      - dmz_public_net
+      - app_isolated_net
+    depends_on:
+      - backend-api
+      - vulnerable-wordpress
+
+  # ==========================================
   # ZONE 1: THE CORE APP STACK
   # ==========================================
   backend-api:
     image: python:3.11-slim
     container_name: sd_fastapi_core
     restart: always
-    ports:
-      - "8000:8000"
     volumes:
       - .:/app
     working_dir: /app
     networks:
-      - sd_secure_network
+      - app_isolated_net
     command: sh -c "pip install --no-cache-dir fastapi uvicorn[standard] python-multipart motor bandit && uvicorn apps.main:app --host 0.0.0.0 --port 8000 --reload"
 
   database-engine:
@@ -34,7 +52,7 @@ services:
     volumes:
       - mongo_data:/data/db
     networks:
-      - sd_secure_network
+      - app_isolated_net
 
   vulnerable-target:
     image: bkimminich/juice-shop:latest
@@ -43,7 +61,7 @@ services:
     ports:
       - "3000:3000"
     networks:
-      - sd_secure_network
+      - app_isolated_net
 
   dvwa-target:
     image: vulnerables/web-dvwa:latest
@@ -52,7 +70,7 @@ services:
     ports:
       - "8081:80"
     networks:
-      - sd_secure_network
+      - app_isolated_net
 
   rogue-console:
     image: nginx:alpine
@@ -61,7 +79,7 @@ services:
     ports:
       - "8082:80"
     networks:
-      - sd_secure_network
+      - app_isolated_net
 
   kali-sandbox:
     image: kalilinux/kali-rolling:latest
@@ -70,7 +88,7 @@ services:
     tty: true
     stdin_open: true
     networks:
-      - sd_secure_network
+      - app_isolated_net
     volumes:
       - .:/workspace
       - ./logs:/target_logs
@@ -83,7 +101,7 @@ services:
     image: redis:alpine
     container_name: sd_infra_redis
     networks:
-      - sd_secure_network
+      - app_isolated_net
 
   postgres-db:
     image: postgres:alpine
@@ -95,7 +113,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql
     networks:
-      - sd_secure_network
+      - app_isolated_net
 
   mysql-db:
     image: mysql:8.0
@@ -105,13 +123,13 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
-      - sd_secure_network
+      - app_isolated_net
 
   memcached-node:
     image: memcached:alpine
     container_name: sd_infra_memcached
     networks:
-      - sd_secure_network
+      - app_isolated_net
 
   vulnerable-ssh:
     image: lscr.io/linuxserver/openssh-server:latest
@@ -120,15 +138,20 @@ services:
       - PASSWORD_ACCESS=true
       - USER_PASSWORD=Password123!
     networks:
-      - sd_secure_network
+      - app_isolated_net
 
   vulnerable-wordpress:
     image: wordpress:latest
     container_name: sd_target_wordpress
-    ports:
-      - "8085:80"
     networks:
-      - sd_secure_network
+      - app_isolated_net
+    depends_on:
+      - mysql-db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
 
   # ==========================================
   # ZONE 3: SIEM MONITORING, METRICS & LOKI LOGGING
@@ -140,7 +163,7 @@ services:
     ports:
       - "3001:3000"
     networks:
-      - sd_secure_network
+      - app_isolated_net
 
   prometheus-monitor:
     image: prom/prometheus:latest
@@ -150,7 +173,7 @@ services:
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
-      - sd_secure_network
+      - app_isolated_net
 
   loki-logging:
     image: grafana/loki:2.9.0
@@ -161,9 +184,8 @@ services:
       - loki_data:/loki
     command: -config.file=/etc/loki/local-config.yaml
     networks:
-      - sd_secure_network
+      - app_isolated_net
 
-  # --- 🚨 PROMTAIL LOG COLLECTOR SERVICE PASSTHROUGH ---
   promtail-shipper:
     image: grafana/promtail:2.9.0
     container_name: sd_sys_promtail
@@ -174,7 +196,7 @@ services:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
     command: -config.file=/etc/promtail/config.yml
     networks:
-      - sd_secure_network
+      - app_isolated_net
     depends_on:
       - loki-logging
 
@@ -191,4 +213,19 @@ services:
       - /lib/modules:/host/lib/modules:ro
       - /usr:/host/usr:ro
     networks:
-      - sd_secure_network
+      - app_isolated_net
+
+  # ==========================================
+  # ZONE 4: SECURITY INTERCEPTION LABS
+  # ==========================================
+  network-sniffer:
+    image: alpine:latest
+    container_name: sd_sys_sniffer
+    restart: always
+    network_mode: "container:sd_target_wordpress"
+    cap_add:
+      - NET_ADMIN
+    command: sh -c "apk add --no-cache tshark && tail -f /dev/null"
+    depends_on:
+      vulnerable-wordpress:
+        condition: service_healthy

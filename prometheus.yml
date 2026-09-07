@@ -1,13 +1,8 @@
 global:
-  scrape_interval: 5s # Scrapes data every 5 seconds to generate fluid charts
-  evaluation_interval: 5s
+  scrape_interval: 15s
+  evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: "prometheus-internal"
+  - job_name: "prometheus"
     static_configs:
       - targets: ["localhost:9090"]
-
-  - job_name: "docker-container-metrics"
-    static_configs:
-      # CRITICAL FIX: Points Prometheus directly to the active cAdvisor system metrics collector
-      - targets: ["sd_sys_promtail:9080"]
