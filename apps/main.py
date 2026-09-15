@@ -1,44 +1,73 @@
-from fastapi import FastAPI, HTTPException
+import os
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import APIKeyHeader
+from fastapi.responses import JSONResponse
+from apps.security_middleware import CitadelScannerMitigationMiddleware
 
-app = FastAPI(title="Nexus Citadel Hardened API Gateway & WAF")
+# Initialize the main enterprise application node layer
+app = FastAPI(
+    title="Nexxus Citadel Protected App Stack Core",
+    version="1.0.0",
+    docs_url="/api/v1/secure-docs",  # Mask standard open documentation paths
+    redoc_url=None
+)
 
-RATE_LIMIT_STORE = {}
-MAX_REQUEST_THRESHOLD = 5
+# ─── 🛡️ ACTIVE SCANNER FILTER MIDDLEWARE INTERCEPTION ───
+# Forces all incoming raw request frames to clear your custom anti-fuzzer signatures
+app.add_middleware(CitadelScannerMitigationMiddleware)
+
+# Mock in-memory API access token database registry for rapid validation checks
+TOKEN_DATABASE = {"hash_999", "citadel_token_secure_2026", "alpha_freelance_auth"}
+
+# Enforce secure authentication key tracking using standard header vectors
+api_key_header = APIKeyHeader(name="X-Citadel-Token", auto_error=False)
+
+def validate_tenant_access_token(token: str = Depends(api_key_header)):
+    """
+    Zero-Trust Security Gate: Verifies incoming request authenticity bounds.
+    Fails with an HTTP 401 Unauthorized if the tracking key signature is invalid or missing.
+    """
+    if not token or token not in TOKEN_DATABASE:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="AUTHENTICATION FAILURE: Valid enterprise security token signature required.",
+            headers={"WWW-Authenticate": "X-Citadel-Token"},
+        )
+    return token
+
+# ─── 🌐 SYSTEM CORE PRODUCTION ENDPOINTS ───
 
 @app.get("/api/v1/process/log-parse")
-def commercial_log_parse_endpoint(id: str = "", token: str = ""):
-    # ─── 🛡️ STEP 1: BULLETPROOF DIRECT STRING INSPECTION FILTER ───
-    if "UNION" in id.upper() and "SELECT" in id.upper():
-        print(f"\n[🚨 WAF ALARM] MALICIOUS PARAMETER INTERCEPTED NATIVELY! Payload: {id}", flush=True)
-        raise HTTPException(
-            status_code=403,
-            detail="Security Incident Mitigation: Malicious payload string detected matching signature [SQL_Injection]."
-        )
-
-    # ─── 🤖 STEP 2: STABLE FIXED COUNTER RATE-LIMITER ───
-    if not token:
-        raise HTTPException(
-            status_code=401,
-            detail="ACCESS DENIED: Missing identification key parameters."
-        )
-
-    if token not in RATE_LIMIT_STORE:
-        RATE_LIMIT_STORE[token] = 0
-
-    RATE_LIMIT_STORE[token] += 1
-
-    if RATE_LIMIT_STORE[token] > MAX_REQUEST_THRESHOLD:
-        print(f"[🚨 THROTTLE EVENT] Brute force mitigation active for token: {token}", flush=True)
-        raise HTTPException(
-            status_code=429,
-            detail=f"BRUTE-FORCE MITIGATION: Request limit exceeded ({MAX_REQUEST_THRESHOLD} hits reached). Account throttled."
-        )
-        
+def process_log_data(id: str, token: str = Depends(validate_tenant_access_token)):
+    """
+    Core Metrics Endpoint: Protected by perimeter token gates.
+    """
     return {
         "execution_state": "SUCCESS",
-        "service": "Log Parsing Engine",
-        "current_hits": RATE_LIMIT_STORE[token]
+        "current_hits": 1,
+        "payload_context": f"Target parameter data query resolved cleanly for identifier: {id}",
+        "tenant_authorization": "VERIFIED"
     }
+
+@app.get("/api/v1/health")
+def system_health_check():
+    """
+    Public Status Check: Allows standard internal container health diagnostics.
+    """
+    return {
+        "status": "ONLINE",
+        "infrastructure_mesh": "STABLE",
+        "zero_trust_middleware": "ACTIVE"
+    }
+
+# Custom global exception gate to capture any unexpected failures gracefully
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "INTERNAL ERROR: Transaction aborted by Citadel core kernel parameters."}
+    )
+
 
 
 
