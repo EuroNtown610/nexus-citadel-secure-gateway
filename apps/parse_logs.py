@@ -1,57 +1,58 @@
-import re
-import json
+import subprocess
 import os
+import sys
 
-# Define local configuration parameters
-LOG_PATH = "./logs/production_traffic.log"
-REPORT_PATH = "./logs/Executive_CFO_Ledger.md"
+def watch_live_nginx_stream():
+    print("=" * 65)
+    print("🚨 NEXUS CITADEL ADVANCED SIEM: CONTINUOUS EDGE THREAT RADAR")
+    print("=" * 65)
+    print("[*] Spawning network intercept socket to 'sd_nginx_edge_proxy'...")
+    print("[*] Listening for high-velocity attack campaigns live...\n")
 
-def parse_server_logs_to_metrics():
-    """
-    Parses active application log streams to calculate processing speeds 
-    and identify latency drag points automatically.
-    """
-    if not os.path.exists(LOG_PATH):
-        # Create mockup log folder configuration if missing to verify pipeline validation tests
-        os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
-        with open(LOG_PATH, "w") as f:
-            f.write('[INFO] 2026-08-30 22:15:01 - Route: "/api/v1/user" - Latency: 45ms\n')
-            f.write('[WARNING] 2026-08-30 22:15:05 - Route: "/api/v1/data" - Latency: 1650ms\n')
+    report_path = "remediation_log.md"
+    threat_signatures = ["UNION SELECT", "XMLRPC.PHP", "429", "NIKTO", "DIRB", "WPSCAN"]
+    vulnerabilities_found = []
 
-    slow_routes = []
-
-    # Compile explicit regular expression search patterns for processing latency tags
-    latency_pattern = re.compile(r'Route: "(?P<route>[^"]+)" - Latency: (?P<ms>\d+)ms')
-
-    with open(LOG_PATH, "r") as file:
-        for line in file:
-            match = latency_pattern.search(line)
-            if match:
-                route = match.group("route")
-                ms = int(match.group("ms"))
+    # ─── 🛡️ THE LOW-LEVEL CONTAINER CONTAINER STREAM HOOK ───
+    # Spawns a real-time process listener targeting the NGINX container's stdout loop natively
+    cmd = ["docker", "logs", "-f", "--tail", "0", "sd_nginx_edge_proxy"]
+    
+    try:
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+        
+        for line in iter(process.stdout.readline, ''):
+            line_strip = line.strip()
+            if not line_strip:
+                continue
                 
-                # Tag structural infrastructure friction points exceeding target limits
-                if ms > 100:
-                    slow_routes.append({"route": route, "latency_ms": ms})
-
-    # Compile the final client tracking ledger summary report
-    build_markdown_summary(slow_routes)
-
-def build_markdown_summary(issues_list):
-    """Generates a clean asset management ledger using value-based trigger words."""
-    markdown = "# SYSTEM ARCHITECTURE DIAGNOSTIC LEDGER\n\n"
-    markdown = "## 1. TECHNICAL ARCHITECTURE BOTTLENECK ANALYSIS\n"
-    markdown += f"Our monitoring engine verified exactly **{len(issues_list)}** systemic latency liabilities:\n\n"
-
-    for issue in issues_list:
-        markdown += f"*   **Exposure Path:** `{issue['route']}` | **Latency Overhead:** {issue['latency_ms']}ms (Draining user conversion margins)\n"
-
-    markdown += "\n## 2. ASYMMETRIC CORPORATE COST REDUCTION REMEDIATION\n"
-    markdown += "To isolate these structural data drag leaks immediately, authorize the implementation sprint under **Premium Service Addendum A**.\n"
-
-    with open(REPORT_PATH, "w") as f:
-        f.write(markdown)
-    print(f"[+] Automated client metrics ledger successfully written to: {REPORT_PATH}")
+            normalized_line = line_strip.upper()
+            threat_detected = False
+            
+            for sig in threat_signatures:
+                if sig in normalized_line:
+                    threat_detected = True
+                    vulnerabilities_found.append((line_strip, sig))
+                    break
+            
+            if threat_detected:
+                # FEATURE 1: EXPLICIT LOG STACK ALERT FOR PROMTAIL / LOKI SIEM MONITORING
+                print(f"[🚨 INTERCEPT EVENT] Match Rule: {sig} | Data: {line_strip}", flush=True)
+                
+                # FEATURE 2: INSTANT LIVE MARKDOWN REMEDIATION REPORT RE-WRITE
+                with open(report_path, "a", encoding="utf-8") as report:
+                    if os.path.getsize(report_path) == 0 if os.path.exists(report_path) else True:
+                        report.write("# 🏛️ Nexxus Citadel Real-Time Perimeter Intrusion Ledger\n\n")
+                        report.write("| Real-Time Log Footprint Trace | Rule Signature Violated |\n")
+                        report.write("| :--- | :--- |\n")
+                    report.write(f"| `{line_strip}` | `{sig}` |\n")
+            else:
+                print(f"[✔ TRAFFIC CLEAR] {line_strip[:80]}...")
+                
+    except KeyboardInterrupt:
+        print("\n[*] Gracefully disconnecting network tap socket...")
+        sys.exit(0)
+    except Exception as e:
+        print(f"[❌ FATAL PIPELINE EXCEPTION]: {str(e)}")
 
 if __name__ == "__main__":
-    parse_server_logs_to_metrics()
+    watch_live_nginx_stream()
