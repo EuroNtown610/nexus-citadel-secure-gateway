@@ -7,7 +7,7 @@ def audit_target_perimeter():
     print("=" * 65)
     
     target_host = "127.0.0.1"
-    target_port = 9095  # Targeting your live Nginx edge gateway
+    target_port = 9095  # Live gateway router port
     
     print(f"[*] Dispatching validation probes to gateway lane: {target_host}:{target_port}\n")
     
@@ -17,9 +17,10 @@ def audit_target_perimeter():
         response = conn.getresponse()
         
         headers = response.getheaders()
-        header_dict = {h[0].upper(): h[1] for h in headers}
+        # Unpack tuple elements cleanly to allow normalized string parsing maps
+        header_dict = {key.upper(): value for key, value in headers}
         
-        # 📊 MANDATORY COMPLIANCE CHECKLIST MATRICES
+        # The exact 4 core baseline enterprise rules
         required_security_headers = [
             "X-FRAME-OPTIONS", 
             "X-CONTENT-TYPE-OPTIONS", 
@@ -44,13 +45,12 @@ def audit_target_perimeter():
         for log_line in report_lines:
             print(log_line)
             
-        # Programmatically write the technical report sheet directly onto the host disk
+        # Write the hard copy output directly to disk for portfolio review
         with open("security_compliance_report.md", "w", encoding="utf-8") as f:
             f.write(f"# NEXUS CITADEL COMPLIANCE SHEET\n\n## Score: {compliance_score}%\n\n")
             for line in report_lines:
                 f.write(f"* {line}\n")
-        print("\n[✔ SUCCESS] Hardening report ledger successfully compiled: security_compliance_report.md")
-        
+                
     except Exception as e:
         print(f"[❌ AUDIT ABORTED]: Connection failure down target subnet - {str(e)}")
 
