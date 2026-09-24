@@ -1,0 +1,14 @@
+- rule: Unauthorized Shell Spawned Inside Nexus Citadel Container
+  desc: Detects an interactive shell shell opening inside a running environment
+  # 🚨 FIXED: Swapped 'spawned_accept' out for the correct native 'spawned_process' macro
+  condition: container.id != host and proc.name in (bash, sh, zsh) and spawned_process
+  output: "🚨 [FALCO ALERT] Unauthorized terminal access! (user=%user.name container_id=%container.id proc=%proc.name cmdline=%proc.cmdline)"
+  priority: CRITICAL
+  tags: [security, container, entrypoint]
+
+- rule: Rogue System Directory Write Attempt
+  desc: Detects unauthorized file creation in sensitive areas
+  condition: open_write and container.id != host and (fd.name startswith /etc/ or fd.name startswith /usr/bin/)
+  output: "🚨 [FALCO CRITICAL] Rogue file write attempt! (user=%user.name file=%fd.name container=%container.name)"
+  priority: WARNING
+  tags: [security, mitigation]
