@@ -3,20 +3,27 @@ volumes:
   postgres_data:
   mysql_data:
   loki_data:
+  grafana_data:
+
+networks:
+  sd_secure_network:
+    driver: bridge
 
 services:
   # ==========================================
-  # THE EDGE GATEWAY (FACING THE WAN)
+  # HARDENED MASTER EDGE GATEWAY & PROXY
   # ==========================================
   nginx-edge-proxy:
     image: nginx:alpine
     container_name: sd_nginx_edge_proxy
     restart: always
     ports:
-      - "8080:80"     # Map public access loop through port 8080
+      - "9095:80"     # Main public entryway
     volumes:
       - ./nginx-config:/etc/nginx/conf.d:ro
-      - ./logs:/var/log/nginx                  # 🚨 MOUNTS THE FOLDER SKELETON DIRECTLY TO STABILIZE LOG WRITES
+      - ./logs:/var/log/nginx
+    networks:
+      - sd_secure_network
     depends_on:
       - backend-api
       - vulnerable-wordpress
@@ -31,6 +38,8 @@ services:
     volumes:
       - .:/app
     working_dir: /app
+    networks:
+      - sd_secure_network
     command: sh -c "pip install --no-cache-dir fastapi uvicorn[standard] python-multipart motor bandit && uvicorn apps.main:app --host 0.0.0.0 --port 8000 --reload"
 
   database-engine:
@@ -41,6 +50,8 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    networks:
+      - sd_secure_network
 
   vulnerable-target:
     image: bkimminich/juice-shop:latest
@@ -48,6 +59,8 @@ services:
     restart: always
     ports:
       - "3000:3000"
+    networks:
+      - sd_secure_network
 
   dvwa-target:
     image: vulnerables/web-dvwa:latest
@@ -55,6 +68,8 @@ services:
     restart: always
     ports:
       - "8081:80"
+    networks:
+      - sd_secure_network
 
   rogue-console:
     image: nginx:alpine
@@ -62,6 +77,8 @@ services:
     restart: always
     ports:
       - "8082:80"
+    networks:
+      - sd_secure_network
 
   kali-sandbox:
     image: kalilinux/kali-rolling:latest
@@ -72,7 +89,9 @@ services:
     volumes:
       - .:/workspace
       - ./logs:/target_logs
-    command: sh -c "apt-get update && apt-get install -y curl nmap nikto dirb hydra ncrack & tail -f /dev/null"
+    networks:
+      - sd_secure_network
+    command: sh -c "apt-get update && apt-get install -y curl nmap nikto dirb hydra ncrack sqlmap & tail -f /dev/null"
 
   # ==========================================
   # ZONE 2: ENTERPRISE INFRASTRUCTURE ADDITIONS
@@ -80,6 +99,8 @@ services:
   redis-cache:
     image: redis:alpine
     container_name: sd_infra_redis
+    networks:
+      - sd_secure_network
 
   postgres-db:
     image: postgres:alpine
@@ -90,6 +111,8 @@ services:
       POSTGRES_PASSWORD: Password123!
     volumes:
       - postgres_data:/var/lib/postgresql
+    networks:
+      - sd_secure_network
 
   mysql-db:
     image: mysql:8.0
@@ -98,10 +121,14 @@ services:
       MYSQL_ROOT_PASSWORD: RootPassword123!
     volumes:
       - mysql_data:/var/lib/mysql
+    networks:
+      - sd_secure_network
 
   memcached-node:
     image: memcached:alpine
     container_name: sd_infra_memcached
+    networks:
+      - sd_secure_network
 
   vulnerable-ssh:
     image: lscr.io/linuxserver/openssh-server:latest
@@ -109,12 +136,16 @@ services:
     environment:
       - PASSWORD_ACCESS=true
       - USER_PASSWORD=Password123!
+    networks:
+      - sd_secure_network
 
   vulnerable-wordpress:
     image: wordpress:latest
     container_name: sd_target_wordpress
     ports:
       - "8085:80"
+    networks:
+      - sd_secure_network
     depends_on:
       - mysql-db
 
@@ -127,6 +158,10 @@ services:
     user: "root"
     ports:
       - "3001:3000"
+    volumes:
+      - loki_data:/var/lib/grafana
+    networks:
+      - sd_secure_network
 
   prometheus-monitor:
     image: prom/prometheus:latest
@@ -135,6 +170,8 @@ services:
       - "9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - sd_secure_network
 
   loki-logging:
     image: grafana/loki:2.9.0
@@ -143,6 +180,8 @@ services:
       - "3100:3100"
     volumes:
       - loki_data:/loki
+    networks:
+      - sd_secure_network
     command: -config.file=/etc/loki/local-config.yaml
 
   promtail-shipper:
@@ -153,6 +192,8 @@ services:
       - ./promtail-config.yaml:/etc/promtail/config.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    networks:
+      - sd_secure_network
     command: -config.file=/etc/promtail/config.yml
     depends_on:
       - loki-logging
@@ -169,3 +210,20 @@ services:
       - /boot:/host/boot:ro
       - /lib/modules:/host/lib/modules:ro
       - /usr:/host/usr:ro
+    networks:
+      - sd_secure_network
+
+  # ==========================================
+  # ZONE 4: ADDED APPLICATION WORKERS (19th)
+  # ==========================================
+  painter-worker:
+    image: python:3.11-slim
+    container_name: sd_painter_worker
+    restart: always
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    networks:
+      - sd_secure_network
+    command: sh -c "python -c 'import time; print(\"🎨 Nexxus Citadel Painter Engine Online...\"); [time.sleep(60) for _ in iter(int, 1)]'"
+
