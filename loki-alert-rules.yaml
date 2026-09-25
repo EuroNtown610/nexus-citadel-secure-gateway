@@ -1,0 +1,13 @@
+groups:
+  - name: citadel_breach_detection
+    rules:
+      - alert: CriticalSubnetBreachDetected
+        expr: |
+          sum(count_over_time({job="citadel_threats"} |= "MITIGATION CRITERIA MATCHED"[1m])) > 0
+        for: 10s
+        labels:
+          severity: critical
+          infrastructure: citadel_core
+        annotations:
+          summary: "Anomalous intrusion signature intercepted by Citadel Threat Hunter"
+          description: "Rogue connection vectors matching known exploit patterns have breached internal container boundaries."

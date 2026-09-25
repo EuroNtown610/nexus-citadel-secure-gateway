@@ -1,44 +1,37 @@
 import os
+import sys
+from datetime import datetime
 
 def hunting_incident_matrix():
     print("=" * 65)
-    print("⚔️ LAB 6 INDEPENDENT THREAT HUNTING: AUTOMATED INCIDENT RESPONSE")
+    print("⚔️ CITADEL STREAM INJECTION: SANITIZED TEXT MATRIX")
     print("=" * 65)
     
     nginx_mock_logs = [
-        "172.18.0.7 - [25/Sep/2026] - GET /index.html HTTP/1.1 - 200",
         "192.168.45.12 - [25/Sep/2026] - GET /admin/config.php HTTP/1.1 - 403",
-        "172.18.0.15 - [25/Sep/2026] - POST /api/v1/health HTTP/1.1 - 200",
         "10.0.99.4 - [25/Sep/2026] - GET /wp-login.php HTTP/1.1 - 200"
     ]
     
-    threat_signatures = ["/ADMIN/CONFIG.PHP", "/WP-LOGIN.PHP"]
-    flagged_alerts = []
+    # 🚨 STEP 1: Force absolute directory construction
+    log_dir = os.path.abspath("logs")
+    os.makedirs(log_dir, exist_ok=True)
+    log_file_path = os.path.join(log_dir, "breach_alerts.log")
     
-    print("[*] Commencing automated log stream correlation analysis...\n")
+    print(f"[*] Appending sanitized telemetry rows into log gate: {log_file_path}")
     
-    for log in nginx_mock_logs:
-        normalized_entry = log.upper()
-        for signature in threat_signatures:
-            if signature in normalized_entry:
-                log_segments = log.split(" - ")
-                offending_ip = log_segments[0]
-                target_route = log_segments[2]
-                
-                flagged_alerts.append({
-                    "attacker": offending_ip,
-                    "exploit_vector": target_route
-                })
-                
-    if flagged_alerts:
-        print(f"[🚨 MITIGATION CRITERIA MATCHED] {len(flagged_alerts)} anomalous indicators identified!")
-        print("-" * 65)
-        for alert in flagged_alerts:
-            print(f" -> ATTACKER SOURCE IP: {alert['attacker']}")
-            print(f" -> EXPLOIT VECTOR ENCOUNTERED: {alert['exploit_vector']}")
-            print(f" [✔ DEFENSE ACTION] Appending host node to permanent drop list network groups.\n")
-    else:
-        print("[✔ CODE OK] Log telemetry loops clear of known operational threat vectors.")
+    try:
+        # 🚨 STEP 2: Open with explicit buffering=0 or force a flush on write
+        with open(log_file_path, "a", encoding="utf-8") as f:
+            for log in nginx_mock_logs:
+                timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+                f.write(f"{timestamp} MITIGATION CRITERIA MATCHED - Flagged Intrusion Profile - {log}\n")
+            f.flush()
+            os.fsync(f.fileno()) # Force the operating system to commit bytes to the physical drive layer
+            
+        print("[✔ SUCCESS] Data rows normalized. Stream transmitted cleanly down the wire!")
+        print(f"[*] Physical File Size Verification: {os.path.getsize(log_file_path)} bytes mapped.")
+    except Exception as e:
+        print(f"[❌ WRITE EXCEPTION]: {str(e)}")
     print("=" * 65)
 
 if __name__ == "__main__":

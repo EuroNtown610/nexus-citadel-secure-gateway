@@ -9,11 +9,10 @@ clients:
   - url: http://sd_sys_loki:3100/loki/api/v1/push
 
 scrape_configs:
-  - job_name: docker_container_logs
-    docker_sd_configs:
-      - host: unix:///var/run/docker.sock
-        refresh_interval: 5s
-    relabel_configs:
-      - source_labels: [__meta_docker_container_name]
-        regex: /(.*)
-        target_label: container
+  - job_name: citadel_threats
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: citadel_threats
+          # 🚨 FORCE THE TRACKER TO READ NATIVE TEXT MOUNT VOLUMES DIRECTLY
+          __path__: /app/logs/breach_alerts.log

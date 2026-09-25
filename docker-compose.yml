@@ -81,7 +81,6 @@ services:
     networks:
       - sd_secure_network
 
-  # 🚨 FIXED: Standard Kali image restored. The command loop handles the install automatically.
   kali-sandbox:
     image: kalilinux/kali-rolling:latest
     container_name: sd_kali_sandbox
@@ -96,7 +95,7 @@ services:
     command: sh -c "apt-get update -y && apt-get install -y smbclient cifs-utils netcat-traditional && tail -f /dev/null"
 
   # ==========================================
-  # LAB 5 SPECIFIC: RESTORED & FIXED SAMBA TARGET
+  # LAB 5 SPECIFIC: CORPORATE SAMBA SHARE TARGET
   # ==========================================
   corporate-smb-share:
     image: dperson/samba:latest
@@ -173,8 +172,14 @@ services:
     user: "root"
     ports:
       - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=Sovereign_Shield_2026_Secure!
+      - GF_AUTH_LOGIN_MAXIMUM_INACTIVE_LIFETIME_DURATION=30d
+      - GF_AUTH_LOGIN_MAXIMUM_LIFETIME_DURATION=30d
+      - GF_AUTH_TOKEN_ROTATION_INTERVAL_DURATION=1d
     volumes:
-      - loki_data:/var/lib/grafana
+      - grafana_data:/var/lib/grafana
     networks:
       - sd_secure_network
 
@@ -206,7 +211,7 @@ services:
     volumes:
       - ./promtail-config.yaml:/etc/promtail/config.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./logs:/app/logs:ro
     networks:
       - sd_secure_network
     command: -config.file=/etc/promtail/config.yml
@@ -243,4 +248,5 @@ services:
     working_dir: /app
     networks:
       - sd_secure_network
-    command: sh -c "python -c 'import time; print(\"🎨 Nexxus Citadel Painter Engine Online...\"); [time.sleep(60) for _ in iter(int, 1)]'"
+    # 🚨 FIXED: Forcefully auto-installs the pymongo driver library the split second the worker node boots up!
+    command: sh -c "pip install --no-cache-dir pymongo && python -c 'import time; print(\"🎨 Nexxus Citadel Painter Engine Online...\"); [time.sleep(60) for _ in iter(int, 1)]'"
