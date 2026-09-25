@@ -1,40 +1,246 @@
-import socket
-import sys
+volumes:
+  mongo_data:
+  postgres_data:
+  mysql_data:
+  loki_data:
+  grafana_data:
+  smb_share_data:
 
-def run_citadel_network_sweep():
-    print("=" * 65)
-    print("🛰️ NEXUS CITADEL NETWORKING: REAL-TIME SUBNET INTERROGATOR")
-    print("=" * 65)
-    
-    subnet_prefix = "172.18.0."
-    target_port = 445  
-    timeout_duration = 0.15  
-    
-    print(f"[*] Dispatching rapid socket sweeps across range: {subnet_prefix}1-254\n")
-    
-    found_targets = 0
-    
-    for host_id in range(1, 255):
-        target_ip = f"{subnet_prefix}{host_id}"
-        
-        # Continuous inline visual print overwrite mapping loop
-        sys.stdout.write(f"\r[*] Auditing network node: {target_ip} ... ")
-        sys.stdout.flush()
-        
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(timeout_duration)
-        
-        result = s.connect_ex((target_ip, target_port))
-        
-        if result == 0:
-            print(f"\n[✔ MATCH FOUND] Active Corporate Target Share IP: {target_ip}")
-            found_targets += 1
-            
-        s.close()
-        
-    print("\n" + "=" * 65)
-    print(f"[✔ AUDIT COMPLETE] Identification run finished. Targets isolated: {found_targets}")
-    print("=" * 65)
+networks:
+  sd_secure_network:
+    driver: bridge
 
-if __name__ == "__main__":
-    run_citadel_network_sweep()
+services:
+  # ==========================================
+  # HARDENED MASTER EDGE GATEWAY & PROXY
+  # ==========================================
+  nginx-edge-proxy:
+    image: nginx:alpine
+    container_name: sd_nginx_edge_proxy
+    restart: always
+    ports:
+      - "9095:80"
+    volumes:
+      - ./nginx-config:/etc/nginx/conf.d:ro
+      - ./logs:/var/log/nginx
+    networks:
+      - sd_secure_network
+    depends_on:
+      - backend-api
+      - vulnerable-wordpress
+
+  # ==========================================
+  # ZONE 1: THE PROTECTED CORE APP STACK
+  # ==========================================
+  backend-api:
+    image: python:3.11-slim
+    container_name: sd_fastapi_core
+    restart: always
+    volumes:
+      - .:/app
+    working_dir: /app
+    networks:
+      - sd_secure_network
+    command: sh -c "pip install --no-cache-dir fastapi uvicorn[standard] python-multipart motor bandit && uvicorn apps.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  database-engine:
+    image: mongo:4.4
+    container_name: sd_mongo_engine
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - sd_secure_network
+
+  vulnerable-target:
+    image: bkimminich/juice-shop:latest
+    container_name: sd_target_juiceshop
+    restart: always
+    ports:
+      - "3000:3000"
+    networks:
+      - sd_secure_network
+
+  dvwa-target:
+    image: vulnerables/web-dvwa:latest
+    container_name: sd_target_dvwa
+    restart: always
+    ports:
+      - "8081:80"
+    networks:
+      - sd_secure_network
+
+  rogue-console:
+    image: nginx:alpine
+    container_name: sd_target_rogue_nginx
+    restart: always
+    ports:
+      - "8082:80"
+    networks:
+      - sd_secure_network
+
+  # 🚨 FIXED: Standard Kali image restored. The command loop handles the install automatically.
+  kali-sandbox:
+    image: kalilinux/kali-rolling:latest
+    container_name: sd_kali_sandbox
+    restart: always
+    tty: true
+    stdin_open: true
+    volumes:
+      - .:/workspace
+      - ./logs:/target_logs
+    networks:
+      - sd_secure_network
+    command: sh -c "apt-get update -y && apt-get install -y smbclient cifs-utils netcat-traditional && tail -f /dev/null"
+
+  # ==========================================
+  # LAB 5 SPECIFIC: RESTORED & FIXED SAMBA TARGET
+  # ==========================================
+  corporate-smb-share:
+    image: dperson/samba:latest
+    container_name: sd_corporate_smb
+    restart: always
+    volumes:
+      - smb_share_data:/mount
+    networks:
+      - sd_secure_network
+    command: -u "operator;CitadelSecure2026!" -s "accounting;/mount;yes;no;no;operator;operator;operator"
+
+  # ==========================================
+  # ZONE 2: ENTERPRISE INFRASTRUCTURE ADDITIONS
+  # ==========================================
+  redis-cache:
+    image: redis:alpine
+    container_name: sd_infra_redis
+    networks:
+      - sd_secure_network
+
+  postgres-db:
+    image: postgres:alpine
+    container_name: sd_infra_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: Password123!
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    networks:
+      - sd_secure_network
+
+  mysql-db:
+    image: mysql:8.0
+    container_name: sd_infra_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: RootPassword123!
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - sd_secure_network
+
+  memcached-node:
+    image: memcached:alpine
+    container_name: sd_infra_memcached
+    networks:
+      - sd_secure_network
+
+  vulnerable-ssh:
+    image: lscr.io/linuxserver/openssh-server:latest
+    container_name: sd_target_ssh
+    environment:
+      - PASSWORD_ACCESS=true
+      - USER_PASSWORD=Password123!
+    networks:
+      - sd_secure_network
+
+  vulnerable-wordpress:
+    image: wordpress:latest
+    container_name: sd_target_wordpress
+    ports:
+      - "8085:80"
+    networks:
+      - sd_secure_network
+    depends_on:
+      - mysql-db
+
+  # ==========================================
+  # ZONE 3: SIEM MONITORING & ANALYSIS ARRAYS
+  # ==========================================
+  grafana-dashboard:
+    image: grafana/grafana:latest
+    container_name: sd_sys_grafana
+    user: "root"
+    ports:
+      - "3001:3000"
+    volumes:
+      - loki_data:/var/lib/grafana
+    networks:
+      - sd_secure_network
+
+  prometheus-monitor:
+    image: prom/prometheus:latest
+    container_name: sd_sys_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - sd_secure_network
+
+  loki-logging:
+    image: grafana/loki:2.9.0
+    container_name: sd_sys_loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki_data:/loki
+    networks:
+      - sd_secure_network
+    command: -config.file=/etc/loki/local-config.yaml
+
+  promtail-shipper:
+    image: grafana/promtail:2.9.0
+    container_name: sd_sys_promtail
+    user: "root"
+    volumes:
+      - ./promtail-config.yaml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    networks:
+      - sd_secure_network
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki-logging
+
+  falco-kernel-monitor:
+    image: falcosecurity/falco:latest
+    container_name: sd_sys_falco
+    restart: always
+    privileged: true
+    user: root
+    tty: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /proc:/host/proc:ro
+      - /boot:/host/boot:ro
+      - /lib/modules:/host/lib/modules:ro
+      - /usr:/host/usr:ro
+      - ./falco-config/falco_rules.local.yaml:/etc/falco/falco_rules.local.yaml:ro
+    networks:
+      - sd_secure_network
+    command: ["falco", "-U", "-c", "/etc/falco/falco.yaml"]
+
+  # ==========================================
+  # ZONE 4: ADDED APPLICATION WORKERS
+  # ==========================================
+  painter-worker:
+    image: python:3.11-slim
+    container_name: sd_painter_worker
+    restart: always
+    volumes:
+      - .:/app
+    working_dir: /app
+    networks:
+      - sd_secure_network
+    command: sh -c "python -c 'import time; print(\"🎨 Nexxus Citadel Painter Engine Online...\"); [time.sleep(60) for _ in iter(int, 1)]'"
