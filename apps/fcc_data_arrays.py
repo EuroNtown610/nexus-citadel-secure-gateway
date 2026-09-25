@@ -15,16 +15,20 @@ def process_corporate_telemetry_ledger():
     for entry in connection_log_ledger:
         if "STATUS:SUCCESS" in entry:
             parts = entry.split(" | ")
-            # 🚨 FIXING DATA STRING REPLACEMENTS
-            ip_address = parts[0].replace("SRC:", "")
-            port_number = parts[1].replace("PORT:", "")
+            
+            # 🚨 FIXED: Extract elements from the split list by index BEFORE calling replace
+            ip_string = parts[0]
+            port_string = parts[1]
+            
+            ip_address = ip_string.replace("SRC:", "")
+            port_number = port_string.replace("PORT:", "")
             
             verified_access_hosts.append(f"Host IP: {ip_address} on open port {port_number}")
             
     print(f"[✔] Total verified access records found: {len(verified_access_hosts)}")
     print("-" * 60)
     for host in verified_access_hosts:
-        print(f" -> Active Node: {host}")
+        print(f" -> Active Node:{host}")
     print("=" * 60)
 
 if __name__ == "__main__":
