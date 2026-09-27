@@ -1,3 +1,4 @@
+import json
 import socket
 
 # 1. Define our microservice target network infrastructure directory mapping
@@ -6,7 +7,7 @@ citadel_subnet_directory = {
     "sd_mongo_engine": 27017,
     "sd_corporate_smb": 445
 }
-
+scan_report = []
 print("=================================================================")
 print("🛰️ LAB 9: AUTOMATED MULTI-CONTAINER NETWORK PROBE")
 print("=================================================================")
@@ -22,8 +23,10 @@ for container_name, target_port in citadel_subnet_directory.items():
     result = s.connect_ex((container_name, target_port))
 
     if result == 0:
-        print(" [LIVE] Conection verified operational.")
+        scan_report.append({"container": container_name, "port": target_port, "status": "LIVE"})
+        print("[LIVE] Connection verified operational.")
     else:
+        scan_report.append({"container": container_name, "port": target_port, "status": "OFFLINE"})
         print("[OFFLINE] Handshake refused. Code: " + str(result))
 
     # 4. Tear down the socket connection block before the loop cycles forward
